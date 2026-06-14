@@ -83,7 +83,7 @@ class _ConnectionGateState extends State<ConnectionGate> {
     }
 
     return HomeScreen(
-      apiService: ApiService(baseUrl: 'http://$_ip'),
+      apiService: ApiService(baseUrl: 'http://$_ip', password: _pwd ?? ''),
       esp32Ip: _ip!,
       onLogout: _onLogout,
     );

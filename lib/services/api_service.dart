@@ -4,15 +4,16 @@ import '../models/alarm_model.dart';
 
 class ApiService {
   final String baseUrl;
+  final String password;
 
-  ApiService({required this.baseUrl});
+  ApiService({required this.baseUrl, this.password = ''});
 
   // ── Auth ────────────────────────────────────────────────────────────────────
 
-  Future<bool> login(String password) async {
+  Future<bool> login(String pwd) async {
     try {
       final request = http.Request('POST', Uri.parse('$baseUrl/login'));
-      request.bodyFields = {'username': 'admin', 'password': password};
+      request.bodyFields = {'username': 'admin', 'password': pwd};
       request.followRedirects = false;
       final client = http.Client();
       final streamed =
@@ -26,6 +27,20 @@ class ApiService {
     }
   }
 
+  // Silent re-login with saved password, then retry the call once.
+  // Handles ESP32 reboots without bothering the user.
+  Future<T> _withReauth<T>(Future<T> Function() fn) async {
+    try {
+      return await fn();
+    } catch (_) {
+      if (password.isNotEmpty) {
+        await login(password);
+        return fn();
+      }
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     try {
       await http
@@ -36,16 +51,16 @@ class ApiService {
 
   // ── Status ──────────────────────────────────────────────────────────────────
 
-  Future<AlarmStatus> getStatus() async {
-    final response = await http
-        .get(Uri.parse('$baseUrl/api/status'))
-        .timeout(const Duration(seconds: 5));
-    if (response.statusCode == 200) {
-      return AlarmStatus.fromJson(
-          json.decode(response.body) as Map<String, dynamic>);
-    }
-    throw Exception('Status ${response.statusCode}');
-  }
+  Future<AlarmStatus> getStatus() => _withReauth(() async {
+        final response = await http
+            .get(Uri.parse('$baseUrl/api/status'))
+            .timeout(const Duration(seconds: 5));
+        if (response.statusCode == 200) {
+          return AlarmStatus.fromJson(
+              json.decode(response.body) as Map<String, dynamic>);
+        }
+        throw Exception('Status ${response.statusCode}');
+      });
 
   // ── Alarm control ───────────────────────────────────────────────────────────
 
