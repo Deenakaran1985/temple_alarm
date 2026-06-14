@@ -14,24 +14,15 @@ class TempleAlarmApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Temple Alarm System',
+      title: 'Temple Alarm',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4a6fa5),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-        ),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4a6fa5),
+          seedColor: const Color(0xFFf59e0b),
           brightness: Brightness.dark,
         ),
+        scaffoldBackgroundColor: const Color(0xFF0f0f13),
         useMaterial3: true,
+        appBarTheme: const AppBarTheme(elevation: 0),
       ),
       home: const ConnectionGate(),
       debugShowCheckedModeBanner: false,
@@ -47,96 +38,54 @@ class ConnectionGate extends StatefulWidget {
 }
 
 class _ConnectionGateState extends State<ConnectionGate> {
-  String? savedIp;
-  bool isLoading = true;
+  String? _ip;
+  String? _pwd;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedIp();
+    _restore();
   }
 
-  Future<void> _loadSavedIp() async {
+  Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      savedIp = prefs.getString('esp32_ip');
-      isLoading = false;
+      _ip = prefs.getString('esp32_ip');
+      _pwd = prefs.getString('esp32_pwd') ?? '';
+      _loading = false;
     });
   }
 
-  Future<void> _saveIp(String ip) async {
+  void _onLoggedIn(String ip, String pwd) =>
+      setState(() { _ip = ip; _pwd = pwd; });
+
+  void _onLogout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('esp32_ip', ip);
-    setState(() {
-      savedIp = ip;
-    });
+    await prefs.remove('esp32_ip');
+    await prefs.remove('esp32_pwd');
+    setState(() { _ip = null; _pwd = null; });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (_loading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: Color(0xFF0f0f13),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFf59e0b)),
+        ),
       );
     }
 
-    if (savedIp == null) {
-      return LoginScreen(onIpSaved: _saveIp);
+    if (_ip == null) {
+      return LoginScreen(onLoggedIn: _onLoggedIn);
     }
 
-    // Test connection to ESP32
-    return FutureBuilder(
-      future: ApiService(baseUrl: 'http://$savedIp').getStatus(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 20),
-                Text('Connecting to ESP32...'),
-              ],
-            )),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.wifi_off, size: 64, color: Colors.red),
-                  const SizedBox(height: 20),
-                  const Text('Cannot connect to ESP32'),
-                  const SizedBox(height: 10),
-                  Text('IP: $savedIp', style: const TextStyle(fontFamily: 'monospace')),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        savedIp = null;
-                      });
-                    },
-                    child: const Text('Change IP Address'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return HomeScreen(
-          apiService: ApiService(baseUrl: 'http://$savedIp'),
-          esp32Ip: savedIp!,
-          onIpChange: () {
-            setState(() {
-              savedIp = null;
-            });
-          },
-        );
-      },
+    return HomeScreen(
+      apiService: ApiService(baseUrl: 'http://$_ip'),
+      esp32Ip: _ip!,
+      onLogout: _onLogout,
     );
   }
 }
