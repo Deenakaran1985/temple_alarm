@@ -299,6 +299,10 @@ class _DashboardTab extends StatelessWidget {
             _infoRow('IP Address', status.ip),
             _infoRow('WiFi Mode',
                 status.apMode ? 'Access Point (AP)' : 'Station (WiFi)'),
+            if (status.duckDomain.isNotEmpty)
+              _infoRow('Cloud URL',
+                  'http://${status.duckDomain}.duckdns.org',
+                  mono: true),
             _infoRow('Music',
                 status.music ? 'Playing  ♪' : 'Stopped'),
           ]),
@@ -1120,6 +1124,10 @@ class _SettingsTabState extends State<_SettingsTab> {
   String? _selectedSsid;
   final _wifiPwdCtrl = TextEditingController();
 
+  final _duckDomainCtrl = TextEditingController();
+  final _duckTokenCtrl = TextEditingController();
+  bool _duckEnabled = false;
+
   @override
   void initState() {
     super.initState();
@@ -1131,6 +1139,8 @@ class _SettingsTabState extends State<_SettingsTab> {
     _zoneNameCtrls = widget.status.zones
         .map((z) => TextEditingController(text: z.name))
         .toList();
+    _duckDomainCtrl.text = widget.status.duckDomain;
+    _duckEnabled = widget.status.duckDomain.isNotEmpty;
   }
 
   @override
@@ -1139,6 +1149,8 @@ class _SettingsTabState extends State<_SettingsTab> {
     _newPwdCtrl.dispose();
     _pinCtrl.dispose();
     _wifiPwdCtrl.dispose();
+    _duckDomainCtrl.dispose();
+    _duckTokenCtrl.dispose();
     for (final c in _zoneNameCtrls) {
       c.dispose();
     }
@@ -1481,6 +1493,105 @@ class _SettingsTabState extends State<_SettingsTab> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        // ── DuckDNS cloud access ──
+        _card(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            const _SectionHeader(
+                icon: Icons.cloud, label: 'Remote Access (DuckDNS)'),
+            const SizedBox(height: 4),
+            const Text(
+              'Register a free subdomain at duckdns.org then enter it here. '
+              'Forward port 80 on your router to the ESP32 IP.',
+              style: TextStyle(color: Color(0xFF8888aa), fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            _toggle('Enable DuckDNS', _duckEnabled,
+                (v) => setState(() => _duckEnabled = v)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _duckDomainCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Subdomain (e.g. temple-talm)',
+                labelStyle: const TextStyle(
+                    color: Color(0xFF8888aa), fontSize: 12),
+                suffixText: '.duckdns.org',
+                suffixStyle:
+                    const TextStyle(color: Color(0xFF555570), fontSize: 12),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _duckTokenCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                labelText: 'DuckDNS Token (from your account)',
+                labelStyle: const TextStyle(
+                    color: Color(0xFF8888aa), fontSize: 12),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (widget.status.duckDomain.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0a1a0a),
+                  border: Border.all(color: const Color(0xFF16a34a44)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.link, color: Color(0xFF4ade80), size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'http://${widget.status.duckDomain}.duckdns.org',
+                      style: const TextStyle(
+                          color: Color(0xFF4ade80),
+                          fontSize: 12,
+                          fontFamily: 'monospace'),
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 10),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final ok = await widget.api.saveDuckDns(
+                    domain: _duckDomainCtrl.text.trim(),
+                    token: _duckTokenCtrl.text.trim(),
+                    enabled: _duckEnabled,
+                  );
+                  widget.onSnack(
+                      ok ? 'DuckDNS saved & updated' : 'Failed',
+                      error: !ok);
+                  if (ok) widget.onRefresh();
+                },
+                icon: const Icon(Icons.cloud_upload, size: 16),
+                label: const Text('Save & Update DuckDNS',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1d4ed8),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),

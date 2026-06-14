@@ -278,6 +278,27 @@ class ApiService {
 
   Future<bool> clearLog() => _postEmpty('/api/clearlog');
 
+  // ── DuckDNS ─────────────────────────────────────────────────────────────────
+
+  Future<bool> saveDuckDns({
+    required String domain,
+    required String token,
+    required bool enabled,
+  }) async {
+    try {
+      final r = await http.post(
+        Uri.parse('$baseUrl/api/duckdns'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'domain=${Uri.encodeQueryComponent(domain)}'
+            '&token=${Uri.encodeQueryComponent(token)}'
+            '&enabled=${enabled ? 1 : 0}',
+      ).timeout(const Duration(seconds: 10));
+      return r.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Reboot ──────────────────────────────────────────────────────────────────
 
   Future<bool> reboot() => _postEmpty('/api/reboot');

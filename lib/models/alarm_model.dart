@@ -101,6 +101,7 @@ class AlarmStatus {
   final bool armed, alarm, music, ntpEnabled, hourly, muteArm, apMode;
   final int volume, alarmDur;
   final String time, date, ip;
+  final String duckDomain;
   final List<Zone> zones;
   final List<int> remote;
   final List<SongSlot> slots;
@@ -119,6 +120,7 @@ class AlarmStatus {
     required this.time,
     required this.date,
     required this.ip,
+    this.duckDomain = '',
     required this.zones,
     required this.remote,
     required this.slots,
@@ -129,9 +131,11 @@ class AlarmStatus {
         .map((z) => Zone.fromJson(z as Map<String, dynamic>))
         .toList();
 
-    final remoteList = (json['remote'] as List? ?? [])
-        .map((r) => (r as num).toInt())
-        .toList();
+    // remote is [{btn, code, paired}, …] — extract the code int from each object
+    final remoteList = (json['remote'] as List? ?? []).map((r) {
+      final m = r as Map<String, dynamic>;
+      return (m['code'] as num?)?.toInt() ?? 0;
+    }).toList();
 
     final rawSlots = (json['slots'] as List? ?? [])
         .map((s) => SongSlot.fromJson(s as Map<String, dynamic>))
@@ -154,6 +158,7 @@ class AlarmStatus {
       time: json['time'] as String? ?? '00:00:00',
       date: json['date'] as String? ?? '--',
       ip: json['ip'] as String? ?? '0.0.0.0',
+      duckDomain: json['duckDomain'] as String? ?? '',
       zones: zonesList,
       remote: remoteList,
       slots: rawSlots,
