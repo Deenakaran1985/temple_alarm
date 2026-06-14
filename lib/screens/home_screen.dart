@@ -149,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _SettingsTab(
                           status: _status!,
                           api: widget.apiService,
+                          esp32Ip: widget.esp32Ip,
                           onRefresh: _refresh,
                           onSnack: _snack),
                       _LogTab(api: widget.apiService, onSnack: _snack),
